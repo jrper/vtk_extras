@@ -113,7 +113,7 @@ extern "C" {
 
   static char extrasDocString[] = "Module collecting python wrappers to VTK stuff.";
 
-  PyMODINIT_FUNC initpyextras() {
+  PyMODINIT_FUNC initvtk_extras() {
     
     PyObject* m = Py_InitModule3("vtk_extras", extrasMethods, extrasDocString);
   if (m == NULL) { return; };

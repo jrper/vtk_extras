@@ -9,7 +9,7 @@ PYTEST=py.test-2.7
 VTK_FLAGS := $(shell cmake --find-package -DNAME=VTK -DCOMPILER_ID=GNU -DLANGUAGE=CXX -DMODE=COMPILE)
 VTK_LIBS := $(shell cmake --find-package -DNAME=VTK -DCOMPILER_ID=GNU -DLANGUAGE=CXX -DMODE=LINK)
 
-PYTHON_CFLAGS := $(shell python-config --cflags)
+PYTHON_CFLAGS := $(shell python-config --includes)
 
 ## For just the python libs use
 ## PYTHON_LIBS := $(shell python-config --ldflags)
@@ -28,7 +28,7 @@ src/%.cxx : src/%.h
 	touch $@
 
 src/%.o : src/%.cxx
-	${CXX} ${VTK_FLAGS} -c src/$*.cxx -o src/$*.o
+	${CXX} ${VTK_FLAGS} ${PYTHON_CFLAGS} -c src/$*.cxx -o src/$*.o
 
 clean:
 	rm -rf src/*.o *.so *.py *.pyc *~ CMakeFiles
