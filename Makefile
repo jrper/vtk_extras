@@ -4,6 +4,7 @@ ifeq (${UNAME},Darwin)
 	SHARED_FLAG = "-bundle"
 else
 	SHARED_FLAG = "-shared"
+	CXXFLAGS = -fPIC
 endif
 PYTEST=py.test-2.7
 VTK_FLAGS := $(shell cmake --find-package -DNAME=VTK -DCOMPILER_ID=GNU -DLANGUAGE=CXX -DMODE=COMPILE)
@@ -34,7 +35,7 @@ src/%.cxx : src/%.h
 	touch $@
 
 src/%.o : src/%.cxx
-	${CXX} ${VTK_FLAGS} ${PYTHON_CFLAGS} -c src/$*.cxx -o src/$*.o
+	${CXX} ${CXXFLAGS} ${VTK_FLAGS} ${PYTHON_CFLAGS} -c src/$*.cxx -o src/$*.o
 
 clean:
 	rm -rf src/*.o *.so *.py *.pyc *~ CMakeFiles
