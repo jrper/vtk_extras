@@ -6,18 +6,6 @@
 #include "GmshReader.h"
 #include "ConsistentInterpolation.h"
 
-vtkUnstructuredGrid* australia(vtkUnstructuredGrid* input) {
-
-  vtkUnstructuredGrid* output = vtkUnstructuredGrid::New();
-  output->DeepCopy(input);
-  for (int i=0; i<input->GetNumberOfPoints(); ++i){
-    double x[3];
-    output->GetPoint(i, x);
-    output->GetPoints()->SetPoint(i, x[0], -x[1], x[2]);
-  }
-  return output;
-}
-
 extern "C" {
 
  static PyObject *myvtk_interpolate(PyObject *self, PyObject *args) {
@@ -139,10 +127,7 @@ extern "C" {
     return pyugrid;
 }
 
-  char australia_docstring[] = "Take a vtk UnstructuredGrid object and reflect it in the x-z plane.";
-
   static PyMethodDef exampleMethods[] = {
-    { (char *)"australia", (PyCFunction) myvtk_australia, METH_VARARGS, australia_docstring},
     { (char *)"Interpolate", (PyCFunction) myvtk_interpolate, METH_VARARGS, gmsh_interpolate_docstring},
     { (char *)"WriteGmsh", (PyCFunction) myvtk_writegmsh, METH_VARARGS, gmsh_write_docstring},
     { (char *)"ReadGmsh", (PyCFunction) myvtk_readgmsh, METH_VARARGS, gmsh_read_docstring},
