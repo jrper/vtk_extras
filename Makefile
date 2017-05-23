@@ -14,6 +14,12 @@ PYTHON_CFLAGS := $(shell python-config --includes)
 ## For just the python libs use
 ## PYTHON_LIBS := $(shell python-config --ldflags)
 
+VTK_MAJOR_VERSION := $(shell python -c "import vtk; print vtk.vtkVersion().GetVTKMajorVersion()")
+
+ifeq (${VTK_MAJOR_VERSION},5)
+	VTK_PYTHON_LIBS=-lvtkPythonCore
+endif
+
 PROJECT = vtk_extras
 
 OBJS = src/GmshWriter.o src/GmshReader.o src/ConsistentInterpolation.o
@@ -21,7 +27,7 @@ OBJS = src/GmshWriter.o src/GmshReader.o src/ConsistentInterpolation.o
 default: ${PROJECT}.so
 
 ${PROJECT}.so: src/${PROJECT}.o ${OBJS}
-	${CXX} ${SHARED_FLAG} ${VTK_LIBS} ${OBJS} src/${PROJECT}.o -o ${PROJECT}.so
+	${CXX} ${SHARED_FLAG} ${OBJS} src/${PROJECT}.o ${VTK_LIBS} ${VTK_PYTHON_LIBS} -o ${PROJECT}.so
 
 src/%.cxx : src/%.h
 	cd src
