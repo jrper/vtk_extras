@@ -5,6 +5,7 @@ ifeq (${UNAME},Darwin)
 else
 	SHARED_FLAG = "-shared"
 endif
+PYTEST=py.test-2.7
 VTK_FLAGS := $(shell cmake --find-package -DNAME=VTK -DCOMPILER_ID=GNU -DLANGUAGE=CXX -DMODE=COMPILE)
 VTK_LIBS := $(shell cmake --find-package -DNAME=VTK -DCOMPILER_ID=GNU -DLANGUAGE=CXX -DMODE=LINK)
 
@@ -32,4 +33,8 @@ src/%.o : src/%.cxx
 clean:
 	rm -rf src/*.o *.so *.py *.pyc *~ CMakeFiles
 
+test: ${PROJECT}.so
+	PYTHONPATH=${PWD} ${PYTEST} 
+
+.PHONY: clean test
 
