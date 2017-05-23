@@ -66,7 +66,7 @@ const char * GmshWriter::GetFileName(){
   return this->FileName.c_str();
 };
 
-void GmshWriter::Write(vtkUnstructuredGrid *input)
+int GmshWriter::Write(vtkUnstructuredGrid *input)
 {
   // try to open the GMSH file
   std::ofstream GMSHfile;
@@ -148,5 +148,5 @@ void GmshWriter::Write(vtkUnstructuredGrid *input)
   // try to close the GMSH file
   GMSHfile.close();
 
-  return;
+  return 1;
 }

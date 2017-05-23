@@ -72,7 +72,6 @@ int readGMSHnodes(std::ifstream& GMSHfile,vtkPoints* outpoints,int isBinary,int 
   if(line.compare("$Nodes")) return 0;
   int nnodes;
   GMSHfile >> nnodes;
-  std::cout << nnodes;
   outpoints->Allocate(nnodes);
   if (isBinary) {
     char tim;
@@ -271,6 +270,8 @@ int GmshReader::ReadFile(vtkUnstructuredGrid* output)
 
   ifstream GMSHfile;
   GMSHfile.open(this->FileName.c_str());
+
+  if (!GMSHfile.is_open()) { return 0; }
 
   float version=-66666;
   int isBinary=-66666;

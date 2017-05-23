@@ -56,8 +56,14 @@ extern "C" {
     vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
     GmshReader* reader = GmshReader::New();
     reader->SetFileName(FileName);
-    reader->ReadFile(ugrid);
+    int ierr  = reader->ReadFile(ugrid);
     delete reader;
+
+    if (!ierr)
+      {
+    	PyErr_SetString(PyExc_IOError, "Couldn't write file");
+    	return NULL;
+      }
 
     // The object below is what we'll return (this seems to add a reference)
     PyObject* pyugrid = vtkPythonUtil::GetObjectFromPointer(ugrid);
@@ -95,8 +101,13 @@ extern "C" {
     GmshWriter* writer = GmshWriter::New();
     writer->SetFileName(FileName);
     writer->SetBinaryWriteMode(isBinary);
-    writer->Write(ugrid);
+    int ierr = writer->Write(ugrid);
     delete writer;
+    if (!ierr)
+      {
+	PyErr_SetString(PyExc_IOError, "Couldn't write file");
+	return NULL;
+      }
 
     // Now back to Python
     Py_RETURN_NONE;

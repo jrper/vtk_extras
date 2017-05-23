@@ -15,7 +15,7 @@ public:
   GmshWriter();
   ~GmshWriter();
 
-  void Write(vtkUnstructuredGrid*);
+  int Write(vtkUnstructuredGrid*);
   void SetFileName(char*);
   const char* GetFileName();
 
