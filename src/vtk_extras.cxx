@@ -8,9 +8,9 @@
 
 extern "C" {
 
- static PyObject *myvtk_interpolate(PyObject *self, PyObject *args) {
+  static PyObject *extras_interpolate(PyObject *self, PyObject *args) {
 
-    vtkPythonArgs argument_parser(args, "myvtk_interpolate");
+    vtkPythonArgs argument_parser(args, "extras_interpolate");
     vtkUnstructuredGrid *input, *source;    
 
     if (!argument_parser.GetVTKObject(input, "vtkUnstructuredGrid")) {
@@ -41,9 +41,9 @@ extern "C" {
 
   char gmsh_interpolate_docstring[] = "ReadGmsh(vtkUnstructuredGrid, vtkUnstructuredGrid) -> vtkUnstructuredGrid\n\nInterpolate the data from one VTK unstructured grid object onto the geometry of another.";
 
- static PyObject *myvtk_readgmsh(PyObject *self, PyObject *args) {
+ static PyObject *extras_readgmsh(PyObject *self, PyObject *args) {
 
-    vtkPythonArgs argument_parser(args, "myvtk_writegmsh");
+    vtkPythonArgs argument_parser(args, "extras_writegmsh");
     char* FileName;
     
     if (!argument_parser.GetValue(FileName)) {
@@ -71,9 +71,9 @@ extern "C" {
 
   char gmsh_read_docstring[] = "ReadGmsh(str filename) -> vtkUnstructuredGrid\n\nWrite the mesh from a vtkUnstructuredGrid object to a gmsh format.";
 
-  static PyObject *myvtk_writegmsh(PyObject *self, PyObject *args) {
+  static PyObject *extras_writegmsh(PyObject *self, PyObject *args) {
 
-    vtkPythonArgs argument_parser(args, "myvtk_writegmsh");
+    vtkPythonArgs argument_parser(args, "extras_writegmsh");
     vtkUnstructuredGrid* ugrid;
     char* FileName;
     bool isBinary=1;
@@ -104,41 +104,18 @@ extern "C" {
 
   char gmsh_write_docstring[] = "WriteGmsh(vtkUnstructuredGrid ugrid, str filename, bool BinaryWriteMode=True)\n\nWrite the mesh from a vtkUnstructuredGrid object to a gmsh format.";
 
-  static PyObject *myvtk_australia(PyObject *self, PyObject *args) {
-
-    vtkPythonArgs argument_parser(args, "myvtk_australia");
-    vtkUnstructuredGrid* ugrid;
-
-    if (!argument_parser.GetVTKObject(ugrid, "vtkUnstructuredGrid")) {
-      PyErr_SetString(PyExc_TypeError, "Need VTK unstructured grid.");
-      return NULL;
-    }
-
-    // apply our function
-    ugrid = australia(ugrid);
-
-    // The object below is what we'll return (this seems to add a reference)
-    PyObject* pyugrid = vtkPythonUtil::GetObjectFromPointer(ugrid);
-
-    // Clean up our spare reference now (or you could use smart pointers)
-    ugrid->Delete();
-
-    // Now back to Python
-    return pyugrid;
-}
-
-  static PyMethodDef exampleMethods[] = {
-    { (char *)"Interpolate", (PyCFunction) myvtk_interpolate, METH_VARARGS, gmsh_interpolate_docstring},
-    { (char *)"WriteGmsh", (PyCFunction) myvtk_writegmsh, METH_VARARGS, gmsh_write_docstring},
-    { (char *)"ReadGmsh", (PyCFunction) myvtk_readgmsh, METH_VARARGS, gmsh_read_docstring},
+  static PyMethodDef extrasMethods[] = {
+    { (char *)"Interpolate", (PyCFunction) extras_interpolate, METH_VARARGS, gmsh_interpolate_docstring},
+    { (char *)"WriteGmsh", (PyCFunction) extras_writegmsh, METH_VARARGS, gmsh_write_docstring},
+    { (char *)"ReadGmsh", (PyCFunction) extras_readgmsh, METH_VARARGS, gmsh_read_docstring},
     { NULL, NULL, 0, NULL }
   };
 
-  static char myvtkDocString[] = "Module collecting python wrappers to VTK stuff.";
+  static char extrasDocString[] = "Module collecting python wrappers to VTK stuff.";
 
-  PyMODINIT_FUNC initpymyvtk() {
+  PyMODINIT_FUNC initpyextras() {
     
-    PyObject* m = Py_InitModule3("pymyvtk", exampleMethods, myvtkDocString);
+    PyObject* m = Py_InitModule3("vtk_extras", extrasMethods, extrasDocString);
   if (m == NULL) { return; };
   
   }
