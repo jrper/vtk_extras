@@ -1,3 +1,5 @@
+#include "vtkExtrasErrors.h"
+
 #include "vtkUnstructuredGridAlgorithm.h"
 #include "vtkSetGet.h"
 #include "vtkVersion.h"
@@ -15,7 +17,7 @@ public:
   void SetFileName(char* FileName);
   const char * GetFileName();
 
-  int ReadFile(vtkUnstructuredGrid*);
+  ErrorCode ReadFile(vtkUnstructuredGrid*);
 
   std::string FileName;
 

@@ -23,14 +23,14 @@ endif
 
 PROJECT = vtk_extras
 
-OBJS = src/GmshWriter.o src/GmshReader.o src/ConsistentInterpolation.o
+OBJS = src/GmshWriter.o src/GmshReader.o src/Interpolator.o src/PyInterpolator.o src/ConsistentInterpolator.o src/MergePoints.o
 
 default: ${PROJECT}.so
 
 ${PROJECT}.so: src/${PROJECT}.o ${OBJS}
 	${CXX} ${SHARED_FLAG} ${OBJS} src/${PROJECT}.o ${VTK_LIBS} ${VTK_PYTHON_LIBS} -o ${PROJECT}.so
 
-src/%.cxx : src/%.h
+src/%.cxx :
 	cd src
 	touch $@
 

@@ -2,11 +2,60 @@
 #include "vtkUnstructuredGrid.h"
 #include "stdio.h"
 
+#include "vtkExtrasErrors.h"
 #include "GmshWriter.h"
 #include "GmshReader.h"
-#include "ConsistentInterpolation.h"
+#include "PyInterpolator.h"
+#include "MergePoints.h"
 
 extern "C" {
+
+  static PyObject *extras_mergePoints(PyObject *self, PyObject *args, PyObject *kw) {
+
+    vtkPythonArgs argument_parser(args, "extras_interpolate");
+    vtkUnstructuredGrid *input, *source;    
+
+    if (!argument_parser.GetVTKObject(input, "vtkUnstructuredGrid")) {
+      PyErr_SetString(PyExc_TypeError, "Need VTK unstructured grid as first argument");
+      return NULL;
+    }
+    PyObject* tmp = NULL;
+    int degree = 1, continuity=1, mapper=REMAP;
+    if(kw) {
+      tmp = PyDict_GetItemString(kw, "degree");
+      if (tmp)  degree = (int) PyInt_AsLong(tmp);
+      tmp = PyDict_GetItemString(kw, "continuity");
+      if (tmp) continuity = (int) PyInt_AsLong(tmp);
+      tmp = PyDict_GetItemString(kw, "map_method");
+      if (tmp) {
+	char* cmapper=PyString_AsString(tmp);
+	if (std::string("remap").compare(cmapper)==0) mapper=REMAP;
+	if (std::string("project").compare(cmapper)==0) mapper=PROJECT;
+      }	
+    }
+      
+    
+    // apply our function
+
+    vtkUnstructuredGrid* output = vtkUnstructuredGrid::New();
+    MergePoints* mergePoints = MergePoints::New();
+    mergePoints->SetDegree(degree);
+    mergePoints->SetContinuity(continuity);
+    mergePoints->SetMapper(mapper);
+    mergePoints->Merge(input, output);
+    mergePoints->Delete();
+
+    // The object below is what we'll return (this seems to add a reference)
+    PyObject* pyugrid = vtkPythonUtil::GetObjectFromPointer(output);
+
+    // Clean up our spare reference now (or you could use smart pointers)
+    output->Delete();
+
+    // Now back to Python
+    return pyugrid;
+  }
+
+  char merge_points_docstring[] = "MergePoints(vtkUnstructuredGrid) -> vtkUnstructuredGrid\n\nDerive continuous data from a VTK unstructured grid object.";
 
   static PyObject *extras_interpolate(PyObject *self, PyObject *args) {
 
@@ -25,8 +74,9 @@ extern "C" {
     // apply our function
 
     vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
-    ConsistentInterpolation* interpolator = ConsistentInterpolation::New();
-    interpolator->Interpolate(input,source, ugrid);
+    ConsistentInterpolator* interpolator = ConsistentInterpolator::New();
+    interpolator->SetDataSource(source);
+    interpolator->Interpolate(input, ugrid);
     interpolator->Delete();
 
     // The object below is what we'll return (this seems to add a reference)
@@ -56,10 +106,10 @@ extern "C" {
     vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
     GmshReader* reader = GmshReader::New();
     reader->SetFileName(FileName);
-    int ierr  = reader->ReadFile(ugrid);
+    ErrorCode ierr  = reader->ReadFile(ugrid);
     delete reader;
 
-    if (!ierr)
+    if (ierr == RETURN_FAIL_IO)
       {
     	PyErr_SetString(PyExc_IOError, "Couldn't write file");
     	return NULL;
@@ -117,6 +167,7 @@ extern "C" {
 
   static PyMethodDef extrasMethods[] = {
     { (char *)"Interpolate", (PyCFunction) extras_interpolate, METH_VARARGS, gmsh_interpolate_docstring},
+    { (char *)"MergePoints", (PyCFunction) extras_mergePoints, METH_VARARGS| METH_KEYWORDS, merge_points_docstring},
     { (char *)"WriteGmsh", (PyCFunction) extras_writegmsh, METH_VARARGS, gmsh_write_docstring},
     { (char *)"ReadGmsh", (PyCFunction) extras_readgmsh, METH_VARARGS, gmsh_read_docstring},
     { NULL, NULL, 0, NULL }
@@ -125,10 +176,22 @@ extern "C" {
   static char extrasDocString[] = "Module collecting python wrappers to VTK stuff.";
 
   PyMODINIT_FUNC initvtk_extras() {
+
+    if (PyType_Ready(&PyInterpolatorType) < 0)
+      return;
     
     PyObject* m = Py_InitModule3("vtk_extras", extrasMethods, extrasDocString);
-  if (m == NULL) { return; };
-  
+    if (m == NULL) return;
+
+    PyObject* vtk = PyImport_ImportModule("vtk");
+
+    Py_INCREF(&PyInterpolatorType);
+    PyModule_AddObject(m,"Interpolator", (PyObject*)&PyInterpolatorType);
+
+    Py_INCREF(vtk);
+    PyModule_AddObject(m,"vtk",vtk);
+    
+    
   }
 
 }

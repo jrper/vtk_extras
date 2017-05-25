@@ -1,4 +1,4 @@
-#include "ConsistentInterpolation.h"
+#include "ConsistentInterpolator.h"
 
 #include "vtkInformation.h"
 #include "vtkInformationVector.h"
@@ -8,37 +8,35 @@
 #include "vtkSmartPointer.h"
 #include "vtkDataObject.h"
 #include "vtkObjectFactory.h"
-#include "vtkStreamingDemandDrivenPipeline.h"
 #include "vtkProbeFilter.h"
-#include "vtkCellLocator.h"
-#include "vtkPointLocator.h"
 #include "vtkGenericCell.h"
 #include "vtkDoubleArray.h"
 #include "vtkMath.h"
 
-ConsistentInterpolation* ConsistentInterpolation::New(){
-  return new ConsistentInterpolation;
+ConsistentInterpolator* ConsistentInterpolator::New(){
+  return new ConsistentInterpolator;
 };
 
-void ConsistentInterpolation::Delete(){
+void ConsistentInterpolator::Delete(){
   delete this;
 }
 
-ConsistentInterpolation::ConsistentInterpolation(){
-  this->Radius=1.0e-1;
+ConsistentInterpolator::ConsistentInterpolator(){
+  this->Radius = 1.0e-1;
 };
-ConsistentInterpolation::~ConsistentInterpolation(){};
 
-void ConsistentInterpolation::SetRadius(double r){
+ConsistentInterpolator::~ConsistentInterpolator(){
+};
+
+void ConsistentInterpolator::SetRadius(double r){
   this->Radius=r;
 };
 
-double ConsistentInterpolation::GetRadius(){
+double ConsistentInterpolator::GetRadius(){
   return this->Radius;
 }
 
-int ConsistentInterpolation::Interpolate(vtkUnstructuredGrid* input,
-					 vtkUnstructuredGrid* source,
+int ConsistentInterpolator::Interpolate(vtkUnstructuredGrid* input,
 					 vtkUnstructuredGrid* output)
 {
   vtkSmartPointer<vtkPoints> outpoints= vtkSmartPointer<vtkPoints>::New(); 
@@ -50,16 +48,8 @@ int ConsistentInterpolation::Interpolate(vtkUnstructuredGrid* input,
 		   input->GetCellLocationsArray(),
 		   input->GetCells());
 
-  vtkSmartPointer<vtkCellLocator> locator= vtkSmartPointer<vtkCellLocator>::New();
-  locator->SetDataSet(source);
-  locator->BuildLocator();
-
-  vtkSmartPointer<vtkPointLocator> plocator= vtkSmartPointer<vtkPointLocator>::New();
-  plocator->SetDataSet(source);
-  plocator->BuildLocator();
-
-  output->GetPointData()->CopyStructure(source->GetPointData());
-  for (vtkIdType j=0;j<source->GetPointData()->GetNumberOfArrays();++j){
+  output->GetPointData()->CopyStructure(this->source->GetPointData());
+  for (vtkIdType j=0;j<this->source->GetPointData()->GetNumberOfArrays();++j){
     output->GetPointData()->GetArray(j)->SetNumberOfTuples(input->GetNumberOfPoints());
   }
 
@@ -73,12 +63,13 @@ int ConsistentInterpolation::Interpolate(vtkUnstructuredGrid* input,
   for (vtkIdType i=0;i<input->GetNumberOfPoints();++i){
     
     vtkIdType cell_id = locator->FindCell(input->GetPoint(i), 0.0, cell, p, w);
+    std::cout<< cell_id << std::endl;
 
     if (cell_id<0) {
       double dist2;
       vtkIdType id = plocator->FindClosestPointWithinRadius(this->Radius, input->GetPoint(i), dist2);
-      for (vtkIdType j=0;j<source->GetPointData()->GetNumberOfArrays();++j) {
-	vtkDataArray* data =source->GetPointData()->GetArray(j);
+      for (vtkIdType j=0;j<this->source->GetPointData()->GetNumberOfArrays();++j) {
+	vtkDataArray* data =this->source->GetPointData()->GetArray(j);
 	int n = output->GetPointData()->GetArray(j)->GetNumberOfComponents();
 	switch (data->GetDataType()) 
 	case VTK_DOUBLE:
@@ -86,7 +77,7 @@ int ConsistentInterpolation::Interpolate(vtkUnstructuredGrid* input,
 	    double val[10], val_in[10];
 	    output->GetPointData()->GetArray(j)->GetTuple(i,val_in);
             if ( dist2<=this->Radius*this->Radius ) {
-	      source->GetPointData()->GetArray(j)->GetTuple(id,val);
+	      this->source->GetPointData()->GetArray(j)->GetTuple(id,val);
 	      for (int k=0; k<n; ++k) {
 		val_in[k]=val[k];	
 	      }
@@ -101,8 +92,8 @@ int ConsistentInterpolation::Interpolate(vtkUnstructuredGrid* input,
       }
   } else {
       int N = cell->GetNumberOfPoints();
-      for (vtkIdType j=0;j<source->GetPointData()->GetNumberOfArrays();++j) {
-	vtkDataArray* data =source->GetPointData()->GetArray(j);
+      for (vtkIdType j=0;j<this->source->GetPointData()->GetNumberOfArrays();++j) {
+	vtkDataArray* data =this->source->GetPointData()->GetArray(j);
 	int n = output->GetPointData()->GetArray(j)->GetNumberOfComponents();
 	switch (data->GetDataType()) 
 	case VTK_DOUBLE:
@@ -125,13 +116,6 @@ int ConsistentInterpolation::Interpolate(vtkUnstructuredGrid* input,
       }
     }	  
   }
-
-  //  vtkSmartPointer<vtkProbeFilter> filter = vtkSmartPointer<vtkProbeFilter>::New();
-  //filter->SetInputData(input);
-  //filter->SetSourceData(source);
-  //filter->SetTolerance(0.0);
-  //filter->Update();
-  //out->DeepCopy(filter->GetOutput());
 
   return 1;
 }

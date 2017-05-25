@@ -263,7 +263,7 @@ int readGMSHelements(std::ifstream& GMSHfile,vtkUnstructuredGrid* output,int isB
     return this->FileName.c_str();
   };
 
-int GmshReader::ReadFile(vtkUnstructuredGrid* output)
+ErrorCode GmshReader::ReadFile(vtkUnstructuredGrid* output)
 {
 
   // try to open the GMSH file
@@ -271,7 +271,7 @@ int GmshReader::ReadFile(vtkUnstructuredGrid* output)
   ifstream GMSHfile;
   GMSHfile.open(this->FileName.c_str());
 
-  if (!GMSHfile.is_open()) { return 0; }
+  if (!GMSHfile.is_open()) { return RETURN_FAIL_IO; }
 
   float version=-66666;
   int isBinary=-66666;
@@ -294,5 +294,5 @@ int GmshReader::ReadFile(vtkUnstructuredGrid* output)
   // try to close the GMSH file
   GMSHfile.close();
 
-  return 1;
+  return RETURN_SUCCESS;
 }
