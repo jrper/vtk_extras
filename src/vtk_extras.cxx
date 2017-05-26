@@ -7,8 +7,38 @@
 #include "GmshReader.h"
 #include "PyInterpolator.h"
 #include "MergePoints.h"
+#include "BoundingSurface.h"
 
 extern "C" {
+
+  static PyObject *extras_bounding_surface(PyObject *self, PyObject *args) {
+
+    vtkPythonArgs argument_parser(args, "extras_bounding_surface");
+    vtkUnstructuredGrid *input;    
+
+    if (!argument_parser.GetVTKObject(input, "vtkUnstructuredGrid")) {
+      PyErr_SetString(PyExc_TypeError, "Need VTK unstructured grid as first argument");
+      return NULL;
+    }
+    
+    // apply our function
+
+    vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
+    BoundingSurface* boundary = BoundingSurface::New();
+    boundary->GetSurface(input, ugrid);
+    boundary->Delete();
+
+    // The object below is what we'll return (this seems to add a reference)
+    PyObject* pyugrid = vtkPythonUtil::GetObjectFromPointer(ugrid);
+
+    // Clean up our spare reference now (or you could use smart pointers)
+    ugrid->Delete();
+
+    // Now back to Python
+    return pyugrid;
+  }
+
+  char bounding_surface_docstring[] = "ReadGmsh(vtkUnstructuredGrid) -> vtkUnstructuredGrid\n\n Extract the boundary from a VTK unstructured grid object.";
 
   static PyObject *extras_mergePoints(PyObject *self, PyObject *args, PyObject *kw) {
 
@@ -166,6 +196,7 @@ extern "C" {
   char gmsh_write_docstring[] = "WriteGmsh(vtkUnstructuredGrid ugrid, str filename, bool BinaryWriteMode=True)\n\nWrite the mesh from a vtkUnstructuredGrid object to a gmsh format.";
 
   static PyMethodDef extrasMethods[] = {
+    { (char *)"BoundingSurface", (PyCFunction) extras_bounding_surface, METH_VARARGS, bounding_surface_docstring},
     { (char *)"Interpolate", (PyCFunction) extras_interpolate, METH_VARARGS, gmsh_interpolate_docstring},
     { (char *)"MergePoints", (PyCFunction) extras_mergePoints, METH_VARARGS| METH_KEYWORDS, merge_points_docstring},
     { (char *)"WriteGmsh", (PyCFunction) extras_writegmsh, METH_VARARGS, gmsh_write_docstring},

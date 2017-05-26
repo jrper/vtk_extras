@@ -137,4 +137,14 @@ def test_mergepoints():
     assert(out.GetNumberOfPoints()==9)
     assert(out.GetNumberOfCells()==2)
     
+def test_boundingsurface():
+    from vtk_extras import BoundingSurface
 
+    ugrid = tmp_ugrid2()
+
+    out = BoundingSurface(ugrid)
+
+    assert(out.GetNumberOfCells() == 6)
+    assert(out.GetNumberOfPoints() == 6)
+    for i in range(6):
+        assert(out.GetCell(i).GetCellType()==vtk.VTK_LINE)

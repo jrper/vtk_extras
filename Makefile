@@ -2,9 +2,10 @@ SWIG = swig
 UNAME := $(shell uname -s)
 ifeq (${UNAME},Darwin)
 	SHARED_FLAG = "-bundle"
+	CXXFLAGS = -fPIC -std=c++11
 else
 	SHARED_FLAG = "-shared"
-	CXXFLAGS = -fPIC
+	CXXFLAGS = -fPIC -std=c++11
 endif
 PYTEST=py.test-2.7
 VTK_FLAGS := $(shell cmake --find-package -DNAME=VTK -DCOMPILER_ID=GNU -DLANGUAGE=CXX -DMODE=COMPILE)
@@ -23,7 +24,7 @@ endif
 
 PROJECT = vtk_extras
 
-OBJS = src/GmshWriter.o src/GmshReader.o src/Interpolator.o src/PyInterpolator.o src/ConsistentInterpolator.o src/MergePoints.o
+OBJS = src/GmshWriter.o src/GmshReader.o src/Interpolator.o src/PyInterpolator.o src/ConsistentInterpolator.o src/MergePoints.o src/BoundingSurface.o
 
 default: ${PROJECT}.so
 
