@@ -46,3 +46,7 @@ vtkUnstructuredGrid* Interpolator::GetDataSource(){
 int Interpolator::Interpolate(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output){
   return RETURN_FAIL_NOT_IMPLEMENTED;
 }
+
+int Interpolator::InterpolatePoint(double x[3], double* val){
+return RETURN_FAIL_NOT_IMPLEMENTED;
+}

@@ -13,6 +13,7 @@ class ConsistentInterpolator : public Interpolator
   void Delete();
 
   int Interpolate(vtkUnstructuredGrid*, vtkUnstructuredGrid*);
+  int InterpolatePoint(double x[3], double* val);
 
   void SetRadius(double);
   double GetRadius();

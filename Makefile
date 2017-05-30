@@ -24,12 +24,15 @@ endif
 
 PROJECT = vtk_extras
 
-OBJS = src/GmshWriter.o src/GmshReader.o src/Interpolator.o src/PyInterpolator.o src/ConsistentInterpolator.o src/MergePoints.o src/BoundingSurface.o
+OBJS = src/GmshWriter.o src/GmshReader.o src/Interpolator.o src/PyInterpolator.o src/ConsistentInterpolator.o src/MergePoints.o src/BoundingSurface.o src/Distance.o
 
 default: ${PROJECT}.so
 
-${PROJECT}.so: src/${PROJECT}.o ${OBJS}
-	${CXX} ${SHARED_FLAG} ${OBJS} src/${PROJECT}.o ${VTK_LIBS} ${VTK_PYTHON_LIBS} -o ${PROJECT}.so
+${PROJECT}.so: src/${PROJECT}.o 
+	${CXX} ${SHARED_FLAG} ${OBJS} src/${PROJECT}.o ${VTK_LIBS} ${VTK_PYTHON_LIBS} -g -o ${PROJECT}.so
+
+src/${PROJECT}.o : src/${PROJECT}.cxx ${OBJS} 
+	${CXX} ${CXXFLAGS} ${VTK_FLAGS} ${PYTHON_CFLAGS} -c $*.cxx -o $*.o
 
 src/%.cxx :
 	cd src

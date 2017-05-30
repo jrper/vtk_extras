@@ -63,7 +63,6 @@ int ConsistentInterpolator::Interpolate(vtkUnstructuredGrid* input,
   for (vtkIdType i=0;i<input->GetNumberOfPoints();++i){
     
     vtkIdType cell_id = locator->FindCell(input->GetPoint(i), 0.0, cell, p, w);
-    std::cout<< cell_id << std::endl;
 
     if (cell_id<0) {
       double dist2;
@@ -118,4 +117,38 @@ int ConsistentInterpolator::Interpolate(vtkUnstructuredGrid* input,
   }
 
   return 1;
+}
+
+int ConsistentInterpolator::InterpolatePoint(double x[3], double* val){
+
+  double p[3];
+  vtkGenericCell* cell=vtkGenericCell::New();
+  double w[10];
+
+  vtkDoubleArray* data = (vtkDoubleArray*) this->source->GetPointData()->GetScalars();
+
+  if (!data) {
+    cell->Delete();
+    return -20;
+  }
+
+  vtkIdType cval = this->locator->FindCell(x, 1.0e-6, cell, p, w);
+  
+
+  *val = 0;
+
+  if (cval == -1) {
+    cell->Delete();
+    return -10;
+  }
+
+  for (int j=0; j<cell->GetNumberOfPoints();++j){
+    vtkCell* c2 = this->source->GetCell(cval);
+    *val = *val + w[j]*data->GetValue(c2->GetPointIds()->GetId(j));
+  }
+ 
+  cell->Delete();
+ 
+  return 1;
+
 }

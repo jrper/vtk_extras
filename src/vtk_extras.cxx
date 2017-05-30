@@ -1,5 +1,6 @@
 #include "vtkPythonArgs.h"
 #include "vtkUnstructuredGrid.h"
+#include "vtkDoubleArray.h"
 #include "stdio.h"
 
 #include "vtkExtrasErrors.h"
@@ -8,8 +9,46 @@
 #include "PyInterpolator.h"
 #include "MergePoints.h"
 #include "BoundingSurface.h"
+#include "Distance.h"
 
 extern "C" {
+
+  static PyObject *extras_distance(PyObject *self, PyObject *args) {
+
+    vtkPythonArgs argument_parser(args, "extras_distance");
+    vtkUnstructuredGrid *mesh, *boundary;    
+
+    if (!argument_parser.GetVTKObject(mesh, "vtkUnstructuredGrid")) {
+      PyErr_SetString(PyExc_TypeError, "Need VTK unstructured grid as first argument");
+      return NULL;
+    }
+    if (!argument_parser.GetVTKObject(boundary, "vtkUnstructuredGrid")) {
+      PyErr_SetString(PyExc_TypeError, "Need VTK unstructured grid as second argument");
+      return NULL;
+    }
+    
+    // apply our function
+
+    vtkDoubleArray* dist = vtkDoubleArray::New();
+    Distance* distance = Distance::New();
+
+    distance->SetBoundary(boundary);
+    int flag = distance->CalculateDistance(mesh, dist);
+    distance->Delete();
+
+    if (flag == -1)  Py_RETURN_NONE;
+
+    // The object below is what we'll return (this seems to add a reference)
+    PyObject* pydist = vtkPythonUtil::GetObjectFromPointer(dist);
+
+    // Clean up our spare reference now (or you could use smart pointers)
+    dist->Delete();
+
+    // Now back to Python
+    return pydist;
+  }
+
+  char distance_docstring[] = "Distance(vtkUnstructuredGrid mesh, vtkUnstructuredGrid boundary) -> vtkDoubleArray\n\n Get distance of mesh from specified boundary.";
 
   static PyObject *extras_bounding_surface(PyObject *self, PyObject *args) {
 
@@ -196,6 +235,7 @@ extern "C" {
   char gmsh_write_docstring[] = "WriteGmsh(vtkUnstructuredGrid ugrid, str filename, bool BinaryWriteMode=True)\n\nWrite the mesh from a vtkUnstructuredGrid object to a gmsh format.";
 
   static PyMethodDef extrasMethods[] = {
+    { (char *)"Distance", (PyCFunction) extras_distance, METH_VARARGS, distance_docstring},
     { (char *)"BoundingSurface", (PyCFunction) extras_bounding_surface, METH_VARARGS, bounding_surface_docstring},
     { (char *)"Interpolate", (PyCFunction) extras_interpolate, METH_VARARGS, gmsh_interpolate_docstring},
     { (char *)"MergePoints", (PyCFunction) extras_mergePoints, METH_VARARGS| METH_KEYWORDS, merge_points_docstring},

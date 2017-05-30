@@ -70,4 +70,24 @@ extern "C" {
     return pyugrid;
   }
 
+  PyObject* PyInterpolator_InterpolatePoint(PyObject *self, PyObject *args) {
+
+    vtkPythonArgs argument_parser(args, "extras_interpolate_point");
+    double x[3];
+
+    if (!argument_parser.GetArray(x, 3)) {
+      PyErr_SetString(PyExc_TypeError, "Need VTK unstructured grid as first argument");
+      return NULL;
+    }
+
+    double val;
+    
+    ((PyInterpolator*) self)->interpolator_ptr->InterpolatePoint(x,&val);
+    // The object below is what we'll return (this seems to add a reference)
+    PyObject* pyout = PyFloat_FromDouble(val);
+
+    // Now back to Python
+    return pyout;
+  }
+
 }

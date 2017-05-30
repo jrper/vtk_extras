@@ -20,12 +20,13 @@ extern "C" {
   void PyInterpolator_dealloc(PyInterpolator*);
   int PyInterpolator_init(PyInterpolator*, PyObject*, PyObject*);
   PyObject* PyInterpolator_call(PyObject*, PyObject*, PyObject*);
+  PyObject* PyInterpolator_InterpolatePoint(PyObject*, PyObject*);
   PyObject* PyInterpolator_new(PyTypeObject*, PyObject*, PyObject*);
   PyObject* PyInterpolator_getDataSource(PyInterpolator*, void*);
   int PyInterpolator_setDataSource(PyInterpolator*, PyObject*, void*);
   
   static PyGetSetDef PyInterpolator_getseters[] = {
-    {"DataSource",(getter) PyInterpolator_getDataSource, (setter) PyInterpolator_setDataSource, "vtk UnstructuredGrid data source", NULL},
+    {(char *)"DataSource",(getter) PyInterpolator_getDataSource, (setter) PyInterpolator_setDataSource, (char *)"vtk UnstructuredGrid data source", NULL},
     {NULL}  /* Sentinel */
   };
   
@@ -34,6 +35,7 @@ extern "C" {
   };  
 
   static PyMethodDef PyInterpolator_methods [] = {
+    { (char *)"InterpolatePoint", (PyCFunction) PyInterpolator_InterpolatePoint, METH_VARARGS, (char*)"Evaluate point."},
     {NULL} /* Sentinel */
   };
   

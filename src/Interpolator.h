@@ -13,6 +13,7 @@ class Interpolator {
   virtual int Interpolate(vtkUnstructuredGrid*, vtkUnstructuredGrid*);
   void SetDataSource(vtkUnstructuredGrid*);
   vtkUnstructuredGrid*  GetDataSource();
+  virtual int InterpolatePoint(double[3], double*);
 
  protected:
   vtkCellLocator* locator;

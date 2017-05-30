@@ -315,6 +315,7 @@ int MergePoints::Merge(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output) 
 
   int input_continuity;
   
+  if (!input || input->GetNumberOfCells() == 0) return -1;
   if (input->GetNumberOfPoints() == input->GetNumberOfCells() * input->GetCell(0)->GetNumberOfPoints()) {
     input_continuity=-1;
   } else {
