@@ -16,6 +16,7 @@
 #include "vtkObjectFactory.h"
 #include "vtkMergePoints.h"
 #include "vtkDoubleArray.h"
+#include "vtkUnsignedCharArray.h"
 #include "vtkMath.h"
 #include "vtkStreamingDemandDrivenPipeline.h"
 
@@ -152,12 +153,16 @@ int Project(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output, int cnt) {
   mass->SetNumberOfComponents(1);
   mass->SetNumberOfTuples(output->GetNumberOfPoints());
   zero(mass);
+
+  unsigned char* cellGhostLevels;
+  vtkDataArray* temp = input->GetCellData()->GetArray("vtkGhostLevels");
+  if (temp) cellGhostLevels =(static_cast<vtkUnsignedCharArray*>(temp))->GetPointer(0);
     
-  for(int i=0; i<output->GetNumberOfCells(); ++i) {
+  for(vtkIdType i=0; i<output->GetNumberOfCells(); ++i) {
     vtkCell* cell = output->GetCell(i);
     double measure=GetMeasure(cell);
 
-    for (int j=0;j<cell->GetNumberOfPoints();++j){
+    for (vtkIdType j=0;j<cell->GetNumberOfPoints();++j){
       vtkIdType id = cell->GetPointId(j);
       mass->SetValue(id,mass->GetValue(id)+measure);
     } 
@@ -170,20 +175,29 @@ int Project(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output, int cnt) {
     data->SetNumberOfTuples(output->GetNumberOfPoints());
     zero(data);
     
-    for (int j=0; j<input->GetNumberOfCells();j++) {
+    vtkIdType nn=0;
+    for (vtkIdType j=0; j<input->GetNumberOfCells();j++) {
+
+      if (temp) {
+	if (cellGhostLevels[j]>0) {
+	  continue;
+	}
+      }
+
+
       vtkCell* input_cell=input->GetCell(j);
-      vtkCell* output_cell=output->GetCell(j);
+      vtkCell* output_cell=output->GetCell(nn++);
       double local_mass[2];
       GetMass(output_cell,local_mass);
 
-      for (int k=0; k<output_cell->GetNumberOfPoints(); ++k) {
+      for (vtkIdType k=0; k<output_cell->GetNumberOfPoints(); ++k) {
 	vtkIdType id = output_cell->GetPointId(k);
 	for (int c=0; c<input->GetPointData()->GetArray(i)->GetNumberOfComponents();++c) {
 	  data->SetComponent(id,c,data->GetComponent(id,c)
 			     +local_mass[0]*input->GetPointData()->GetArray(i)->GetComponent(input_cell->GetPointId(k),c));
 	    }
        
-	for (int n=1; n<output_cell->GetNumberOfPoints(); ++n) {
+	for (vtkIdType n=1; n<output_cell->GetNumberOfPoints(); ++n) {
 	  vtkIdType id2 = output_cell->GetPointId((k+n)%output_cell->GetNumberOfPoints());
 	  for (int c=0; c<input->GetPointData()->GetArray(i)->GetNumberOfComponents();++c) {
 	    data->SetComponent(id2,c,data->GetComponent(id2,c)
@@ -202,20 +216,31 @@ int Project(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output, int cnt) {
 
 int Remap(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output, int cnt) {
 
+  unsigned char* cellGhostLevels;
+  vtkDataArray* temp = input->GetCellData()->GetArray("vtkGhostLevels");
+  if (temp) cellGhostLevels =(static_cast<vtkUnsignedCharArray*>(temp))->GetPointer(0);
+
   for (int i=0; i<input->GetPointData()->GetNumberOfArrays();i++) {
     vtkSmartPointer<vtkDoubleArray> data= vtkSmartPointer<vtkDoubleArray>::New();
     data->SetName(input->GetPointData()->GetArray(i)->GetName());
     data->SetNumberOfComponents(input->GetPointData()->GetArray(i)->GetNumberOfComponents());
     data->SetNumberOfTuples(output->GetNumberOfPoints());
-
+    
     if (cnt==CONTINUITY_UNCHANGED &&
 	(input->GetCell(0) && output->GetCell(0)) &&
 	input->GetCell(0)->GetCellType() == output->GetCell(0)->GetCellType()) {
       data->DeepCopy(input->GetPointData()->GetArray(i));
     } else {
-      for (int j=0; j<input->GetNumberOfCells();j++) {
+      vtkIdType n=0;
+      for (vtkIdType j=0; j<input->GetNumberOfCells();j++) {
+
+	if (temp) {
+	  if (cellGhostLevels[j]>0) {
+	    continue;
+	  }
+	}
 	vtkCell* input_cell=input->GetCell(j);
-	vtkCell* output_cell=output->GetCell(j);
+	vtkCell* output_cell=output->GetCell(n++);
 	if (LinearType(input_cell->GetCellType())==output_cell->GetCellType()
 	    || input_cell->GetCellType()==output_cell->GetCellType()) {
 	  for (int k=0;k<output_cell->GetNumberOfPoints();k++) {
@@ -277,7 +302,7 @@ void MergePoints::SetMapper(int mapper){
 
 MergePoints::MergePoints(){
   this->Degree=DEGREE_UNCHANGED; // -1 will mean don't change, 1 Linear, 2 Quadratic.
-  this->Continuity=CONTINUITY_UNCHANGED; // 0 will mean don't change, 1 continuous, -1 discontinuous.
+  this->Continuity=CONTINUOUS; // 0 will mean don't change, 1 continuous, -1 discontinuous.
   this->mapper = &Remap;
 };
 MergePoints::~MergePoints(){};
@@ -329,20 +354,34 @@ int MergePoints::Merge(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output) 
 
   output->Allocate(input->GetNumberOfCells());
 
-  for (int i=0; i<input->GetNumberOfCells();i++) {
-    vtkCell* cell;
-    cell = input->GetCell(i);
-    vtkSmartPointer<vtkIdList> cellIds= vtkSmartPointer<vtkIdList>::New();
+  unsigned char* cellGhostLevels;
+  vtkDataArray* temp = input->GetCellData()->GetArray("vtkGhostLevels");
+  if (temp) cellGhostLevels =(static_cast<vtkUnsignedCharArray*>(temp))->GetPointer(0);
+
+  output->GetCellData()->CopyStructure(input->GetCellData());
+
+  for (int i=0; i<input->GetNumberOfCells(); ++i) {
+    vtkCell* cell = input->GetCell(i);
+    vtkIdList* cellIds = vtkIdList::New();
+    cellIds->SetNumberOfIds(cell->GetNumberOfPoints());
     vtkIdType id_map;
 
-    for (int j=0; j<cell->GetNumberOfPoints();j++) {
-      vtkIdType id=cell->GetPointIds()->GetId(j);
+    
+
+    if (temp) {
+      if (cellGhostLevels[i]>0) {
+	continue;
+      }
+    }
+
+    for (int j=0; j<cell->GetNumberOfPoints(); ++j) {
+      vtkIdType id = cell->GetPointIds()->GetId(j);
       if (this->Continuity==DISCONTINUOUS || (this->Continuity==CONTINUITY_UNCHANGED && input_continuity<0)) {
 	id_map=mergePoints->GetPoints()->InsertNextPoint(input->GetPoints()->GetPoint(id));
       } else {
 	mergePoints->InsertUniquePoint(input->GetPoints()->GetPoint(id),id_map);
       }
-      cellIds->InsertNextId(id_map);
+      cellIds->SetId(j,id_map);
     }
 
     switch (this->GetDegree())
@@ -357,8 +396,30 @@ int MergePoints::Merge(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output) 
 	AddQuadraticPoints(mergePoints,input->GetPoints(),cell,cellIds, input_continuity);
 	output->InsertNextCell(QuadraticType(cell->GetCellType()),cellIds);
 	break;
-      }    
+      }
   }
+
+  
+
+  
+  for (int j=0; j<output->GetCellData()->GetNumberOfArrays(); ++j) {
+
+    output->GetCellData()->GetArray(j)->SetNumberOfTuples(output->GetNumberOfCells());
+    vtkIdType k=0;
+    for (vtkIdType i=0; i<input->GetNumberOfCells(); ++i) {
+      if (temp) {
+	if (cellGhostLevels[i]>0) {
+	  continue;
+	}
+      }
+      output->GetCellData()->GetArray(j)->SetTuple(k++,i,input->GetCellData()->GetArray(j));	
+    }
+  }
+
+  if (temp) {
+    output->GetCellData()->RemoveArray("vtkGhostLevels");
+  }
+      
 
   vtkSmartPointer<vtkPoints> tmppoints= vtkSmartPointer<vtkPoints>::New();
   tmppoints->DeepCopy(mergePoints->GetPoints());
@@ -366,7 +427,7 @@ int MergePoints::Merge(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output) 
 
   this->mapper(input, output, this->Continuity);
 
-  output->GetCellData()->DeepCopy(input->GetCellData());
+  
   return 1;
   }
 

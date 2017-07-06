@@ -86,6 +86,45 @@ void BoundingSurface::Delete(){delete this;};
 BoundingSurface::BoundingSurface(){};
 BoundingSurface::~BoundingSurface(){};
 
+int get_bound_count(vtkCell* cell) {
+  int count;
+  switch(cell->GetCellDimension()) {
+  case 1:
+    {
+      count = cell->GetNumberOfPoints();
+      break;
+    }
+  case 2:
+    {
+      count = cell->GetNumberOfEdges();
+      break;
+    }
+  case 3:
+    {
+      count = cell->GetNumberOfFaces();
+      break;
+    }
+  }
+  return count;
+}
+
+vtkCell* get_bound(vtkCell* cell, int i) {
+  vtkCell* bnd;
+  switch(cell->GetCellDimension()) {
+  case 2:
+    {
+      bnd = cell->GetEdge(i);
+      break;
+    }
+  case 3:
+    {
+      bnd = cell->GetFace(i);
+      break;
+    }
+  }
+  return bnd;
+}
+
 int BoundingSurface::GetSurface(vtkUnstructuredGrid* input, vtkUnstructuredGrid* output)
 {
 
@@ -96,7 +135,15 @@ int BoundingSurface::GetSurface(vtkUnstructuredGrid* input, vtkUnstructuredGrid*
   merger->Merge(input,continuous_input);
   merger->Delete();
 
+  std::cout << "number of points:" << continuous_input->GetNumberOfPoints()<<"\n";
+  std::cout << "number of cells:" << continuous_input->GetNumberOfCells()<<"\n";
+
   vtkSmartPointer<vtkPoints> outpoints= vtkSmartPointer<vtkPoints>::New();  
+  vtkSmartPointer<vtkMergePoints> mergePoints= vtkSmartPointer<vtkMergePoints>::New();
+  mergePoints->SetTolerance(1.e-34);
+  mergePoints->InitPointInsertion(outpoints, input->GetBounds());
+
+  vtkIdType ids[20];
   
   int dim=0;
 
@@ -104,144 +151,65 @@ int BoundingSurface::GetSurface(vtkUnstructuredGrid* input, vtkUnstructuredGrid*
     vtkCell* cell=continuous_input->GetCell(i);
     dim = std::max(dim,cell->GetCellDimension());
   }
-  switch (dim)
-    {
-    case 1: 
-      {
-	std::unordered_set<vtkIdType> boundary;
-	for (vtkIdType i=0; i<continuous_input->GetNumberOfCells(); ++i) {
-	  vtkCell* cell=continuous_input->GetCell(i);
-	  
-	  if (cell->GetCellDimension() != dim) continue;
-	  
-	  for (int j=0; j<2; ++j){
-	    vtkIdType pt = cell->GetPointIds()->GetId(j);
-	    if (boundary.count(pt)) {
-	      boundary.erase(pt);
-	    } else {
-	      boundary.insert(pt);
-	    }
-	  }
 
-	}
+  for (vtkIdType i=0; i<continuous_input->GetNumberOfCells(); ++i) {
+    vtkCell* cell=continuous_input->GetCell(i);
+    if (cell->GetCellDimension()<dim) continue;
 
-
-	std::unordered_map<vtkIdType,vtkIdType> point_map;
-	for (std::unordered_set<vtkIdType>::iterator e = boundary.begin(); e != boundary.end(); ++e) {
-	  point_map.emplace(*e,outpoints->InsertNextPoint(input->GetPoint(*e)));
-	}
-	output->SetPoints(outpoints);
-
-	output->Allocate(boundary.size());
-
-	for (std::unordered_set<vtkIdType>::iterator e = boundary.begin(); e != boundary.end(); ++e) {
-	  vtkIdType l[1];
-	  l[0] = point_map.at(*e);
-	  output->InsertNextCell(VTK_VERTEX,1,l);
-	}
+    for(int j=0; j< get_bound_count(cell); ++j) { 
+      vtkIdList* list = vtkIdList::New();
+      vtkSmartPointer<vtkCell> bnd = get_bound(cell, j);
+      continuous_input->GetCellNeighbors(i,bnd->GetPointIds(), list);   
+      if (list->GetNumberOfIds()==0) {
+	vtkIdType id;
+	for(vtkIdType k=0; k<bnd->GetNumberOfPoints(); ++k) {
+	  mergePoints->InsertUniquePoint(bnd->GetPoints()->GetPoint(k),id);
+	  ids[k] = id;
+	} 
+	output->InsertNextCell(bnd->GetCellType(), bnd->GetNumberOfPoints(), ids);
       }
-      break;
-    case 2:
-      {
-	std::unordered_set<vtkSmartPointer<vtkIdList>, id_hash, id_eq> boundary;
-	
-	for (vtkIdType i=0; i<continuous_input->GetNumberOfCells(); ++i) {
-	  vtkCell* cell=continuous_input->GetCell(i);
-	  
-	  if (cell->GetCellDimension() != dim) continue;
-	  
-	  
-	  for (int j=0; j<cell->GetNumberOfEdges(); ++j){
-	    vtkCell* edge = cell->GetEdge(j);
-	    
-	    vtkIdList* vertices = sort(edge);
-	    
-	    if (boundary.count(vertices)) {
-	      boundary.erase(vertices);
-	    } else {
-	      boundary.insert(vertices);
-	    }
-	  }
-	}
-
-	std::unordered_map<vtkIdType,vtkIdType> point_map;
-	for (std::unordered_set<vtkSmartPointer<vtkIdList>,id_hash , id_eq>::iterator e = boundary.begin(); e != boundary.end(); ++e) {
-	  for (int j=0;j<(*e)->GetNumberOfIds();++j) {
-	    if (point_map.count((*e)->GetId(j)) == 0) point_map.emplace((*e)->GetId(j),outpoints->InsertNextPoint(input->GetPoint((*e)->GetId(j))));
-	  }
-	}
-	output->SetPoints(outpoints);
-
-	output->Allocate(boundary.size());
-	  
-	for (std::unordered_set<vtkSmartPointer<vtkIdList>,id_hash , id_eq>::iterator e = boundary.begin(); e != boundary.end(); ++e  ) {
-	  vtkIdType l[3];
-	  for (int j=0;j<(*e)->GetNumberOfIds();++j) {
-	    l[j] = point_map.at((*e)->GetId(j));
-	  }
-	  switch ((*e)->GetNumberOfIds()) {
-	  case 2:
-	    output->InsertNextCell(VTK_LINE,2,l);
-	    break;
-	  case 3:
-	    output->InsertNextCell(VTK_QUADRATIC_EDGE,3,l);
-	    break;
-	  }
-	}
-      }
-      break;
-    case 3:
-      {
-	std::unordered_set<vtkSmartPointer<vtkIdList>, id_hash, id_eq > boundary;
-
-	for (vtkIdType i=0; i<continuous_input->GetNumberOfCells(); ++i) {
-	  vtkCell* cell=input->GetCell(i);
-	  
-	  if (cell->GetCellDimension() != dim) continue;
-	  
-	  
-	  for (int j=0; j<cell->GetNumberOfFaces(); ++j){
-	    vtkCell* edge = cell->GetFace(j);
-	    
-	    vtkSmartPointer<vtkIdList> vertices = sort(edge);
-	    
-	    if (boundary.count(vertices)) {
-	      boundary.erase(vertices);
-	    } else {
-	      boundary.insert(vertices);
-	    }
-	  }
-	}
-
-	std::unordered_map<vtkIdType,vtkIdType> point_map;
-	for (std::unordered_set<vtkSmartPointer<vtkIdList>,id_hash , id_eq>::iterator e = boundary.begin(); e != boundary.end(); ++e) {
-	  for (int j=0;j<(*e)->GetNumberOfIds();++j) {
-	    if (point_map.count((*e)->GetId(j))==0)  point_map.emplace((*e)->GetId(j),outpoints->InsertNextPoint(input->GetPoint((*e)->GetId(j))));
-	  }
-	}
-	output->SetPoints(outpoints);
-	
-	output->Allocate(boundary.size());
-	  
-	for (std::unordered_set<vtkSmartPointer<vtkIdList>, id_hash, id_eq>::iterator e = boundary.begin(); e != boundary.end(); ++e  ) {
-	  vtkIdType l[6];
-	  for (int j=0;j<(*e)->GetNumberOfIds();++j) {
-	    l[j] = point_map.at((*e)->GetId(j));
-	  }
-	  switch ((*e)->GetNumberOfIds()) {
-	  case 3:
-	    output->InsertNextCell(VTK_TRIANGLE,3,l);
-	    break;
-	  case 6:
-	    output->InsertNextCell(VTK_QUADRATIC_TRIANGLE,6,l);
-	    break;
-	  }
-	}
-      }
-      break;
+      list->Delete();
     }
+  }
 
-  output->GetPointData()->DeepCopy(continuous_input->GetPointData());
+  output->GetPointData()->CopyStructure(continuous_input->GetPointData());
+  output->GetCellData()->CopyStructure(continuous_input->GetCellData());
+
+  for (int j=0; j<output->GetPointData()->GetNumberOfArrays(); ++j) {
+
+    output->GetPointData()->GetArray(j)->SetNumberOfTuples(output->GetNumberOfCells());
+
+    for( vtkIdType i=0; i< continuous_input->GetNumberOfPoints(); ++i) {
+      vtkIdType id = mergePoints->IsInsertedPoint(continuous_input->GetPoint(i));
+      if (id >= 0) {
+	output->GetPointData()->GetArray(j)->SetTuple(id, i, continuous_input->GetPointData()->GetArray(j));
+      }
+    }
+  }
+
+
+  for (int j=0; j<output->GetCellData()->GetNumberOfArrays(); ++j) {
+    
+    output->GetCellData()->GetArray(j)->SetNumberOfTuples(output->GetNumberOfCells());
+    vtkIdType nn=0;
+    for (vtkIdType i=0; i<continuous_input->GetNumberOfCells(); ++i) {
+      vtkCell* cell=continuous_input->GetCell(i);
+      if (cell->GetCellDimension()<dim) continue;
+      for(int m=0; m< get_bound_count(cell); ++m) { 
+	vtkIdList* list = vtkIdList::New();
+	vtkSmartPointer<vtkCell> bnd = get_bound(cell, m);
+	continuous_input->GetCellNeighbors(i, bnd->GetPointIds(), list);   
+	if (list->GetNumberOfIds()==0) {
+	  output->GetCellData()->GetArray(j)->SetTuple(nn++, i, continuous_input->GetCellData()->GetArray(j));
+	}
+	list->Delete();
+      }
+    }
+  }
+
+  vtkSmartPointer<vtkPoints> tmppoints= vtkSmartPointer<vtkPoints>::New();
+  tmppoints->DeepCopy(mergePoints->GetPoints());
+  output->SetPoints(tmppoints);
 
   return 1;
 }
