@@ -101,7 +101,7 @@ double GetMeasure(vtkCell* cell) {
   double measure;
     switch (cell->GetCellType()) {
     case VTK_LINE:
-      measure=std::sqrt(((vtkLine*)cell)->GetLength2())/2.0;
+      measure=sqrt(((vtkLine*)cell)->GetLength2())/2.0;
       break;
     case VTK_TRIANGLE:
       measure=((vtkTriangle*)cell)->ComputeArea()/3.0;
@@ -120,7 +120,7 @@ void GetMass(vtkCell* cell, double mass[]) {
   double measure;
     switch (cell->GetCellType()) {
     case VTK_LINE:
-      measure=std::sqrt(((vtkLine*)cell)->GetLength2());
+      measure=sqrt(((vtkLine*)cell)->GetLength2());
       mass[0] = measure/3.0;
       mass[1] = measure/6.0;
       break;
@@ -142,7 +142,8 @@ void GetMass(vtkCell* cell, double mass[]) {
 }
 
 void zero(vtkDoubleArray* data){
-  for (vtkIdType i=0; i<data->GetNumberOfValues();++i){
+  for (vtkIdType i=0; i<data->GetNumberOfTuples()
+	 *data->GetNumberOfComponents();++i){
     data->SetValue(i,0.0);
   }
 }
