@@ -135,9 +135,6 @@ int BoundingSurface::GetSurface(vtkUnstructuredGrid* input, vtkUnstructuredGrid*
   merger->Merge(input,continuous_input);
   merger->Delete();
 
-  std::cout << "number of points:" << continuous_input->GetNumberOfPoints()<<"\n";
-  std::cout << "number of cells:" << continuous_input->GetNumberOfCells()<<"\n";
-
   vtkSmartPointer<vtkPoints> outpoints= vtkSmartPointer<vtkPoints>::New();  
   vtkSmartPointer<vtkMergePoints> mergePoints= vtkSmartPointer<vtkMergePoints>::New();
   mergePoints->SetTolerance(1.e-34);
